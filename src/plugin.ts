@@ -11,6 +11,7 @@ import {
     RoomEndGameIntentEvent,
     RoomBeforeDestroyEvent,
     RegisterMessage,
+    PlayerInfo,
 } from "@skeldjs/hindenburg";
 
 class MapLoadedRPC extends BaseRpcMessage {
@@ -25,14 +26,20 @@ class MapLoadedRPC extends BaseRpcMessage {
 @RegisterMessage(MapLoadedRPC)
 @HindenburgPlugin("hbplugin-apollo-support")
 export class ApolloSupportPlugin extends WorkerPlugin {
-    isloaded = new Set<number>();
+    isloaded = new Map<number, Set<number>>();
     constructor(worker: Worker, config: any) {
         super(worker, config);
     }
     @MessageHandler(MapLoadedRPC)
     handler(message: MapLoadedRPC, ctx: PacketContext) {
         this.logger.info("maploaded");
-        if (ctx.sender.room) this.isloaded.add(ctx.sender.room.code);
+        if (ctx.sender.room) {
+            if (!this.isloaded.has(ctx.sender.room.code))
+                this.isloaded.set(ctx.sender.room.code, new Set());
+            this.isloaded
+                .get(ctx.sender.room.code)
+                ?.add(ctx.sender.getPlayer()!.clientId);
+        }
     }
 
     @EventListener("room.beforedestroy")
@@ -40,8 +47,26 @@ export class ApolloSupportPlugin extends WorkerPlugin {
         this.isloaded.delete(ev.room.code);
     }
 
+    hasAllPlayers(set: Set<number>, players: PlayerInfo[]) {
+        let hasAll = true;
+        for (const player of players) {
+            if (player.isDisconnected) continue;
+            hasAll = hasAll && set.has(player.playerId);
+        }
+        return hasAll;
+    }
+
     @EventListener("room.endgameintent")
     endGameIntent(endGameIntent: RoomEndGameIntentEvent<Room>) {
-        if (!this.isloaded.has(endGameIntent.room.code)) endGameIntent.cancel();
+        if (
+            !this.isloaded.has(endGameIntent.room.code) ||
+            !this.hasAllPlayers(
+                this.isloaded.get(endGameIntent.room.code)!,
+                [...endGameIntent.room.players.values()].map(
+                    (a) => a.playerInfo!
+                )
+            )
+        )
+            endGameIntent.cancel();
     }
 }

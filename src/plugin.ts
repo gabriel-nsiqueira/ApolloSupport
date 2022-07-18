@@ -10,6 +10,7 @@ import {
     HazelReader,
     RoomEndGameIntentEvent,
     RoomBeforeDestroyEvent,
+    RegisterMessage,
 } from "@skeldjs/hindenburg";
 
 class MapLoadedRPC extends BaseRpcMessage {
@@ -21,6 +22,7 @@ class MapLoadedRPC extends BaseRpcMessage {
     }
 }
 
+@RegisterMessage(MapLoadedRPC)
 @HindenburgPlugin("hbplugin-apollo-support")
 export class ApolloSupportPlugin extends WorkerPlugin {
     isloaded = new Set<number>();

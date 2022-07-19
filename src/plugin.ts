@@ -12,6 +12,7 @@ import {
     RoomBeforeDestroyEvent,
     RegisterMessage,
     PlayerInfo,
+    RoomGameEndEvent,
 } from "@skeldjs/hindenburg";
 
 class MapLoadedRPC extends BaseRpcMessage {
@@ -43,7 +44,8 @@ export class ApolloSupportPlugin extends WorkerPlugin {
     }
 
     @EventListener("room.beforedestroy")
-    onDestroy(ev: RoomBeforeDestroyEvent) {
+    @EventListener("room.gameend")
+    onDestroy(ev: RoomBeforeDestroyEvent | RoomGameEndEvent) {
         this.isloaded.delete(ev.room.code);
     }
 
